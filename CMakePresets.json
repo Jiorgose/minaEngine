@@ -16,10 +16,10 @@
       "name": "web",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/web",
-      "toolchainFile": "$${env.EMSCRIPTEN}/cmake/Modules/Platform/Emscripten.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
+        "CMAKE_TOOLCHAIN_FILE": "$env{EMSCRIPTEN}/cmake/Modules/Platform/Emscripten.cmake"
       }
     }
   ],

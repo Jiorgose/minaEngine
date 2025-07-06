@@ -3,6 +3,9 @@
 !minaEngine/
 !minaEngine/**
 
+!dependencies/
+!dependencies/**
+
 !CMakeLists.txt
 !CMakePresets.json
 !*.cmake
