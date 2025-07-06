@@ -1,12 +1,28 @@
 cmake_minimum_required(VERSION 3.10)
 project(minaEngine VERSION 0.1.0 LANGUAGES C CXX)
 
-add_executable(minaEngine minaEngine/main.cpp)
+include(FetchContent)
+
+add_executable(minaEngine 
+  minaEngine/engine/main.cpp
+  minaEngine/engine/fullscreen.cpp
+  minaEngine/engine/render.cpp
+)
 set_property(TARGET minaEngine PROPERTY CXX_STANDARD 20)
+
+FetchContent_Declare(
+	glm
+	GIT_REPOSITORY	https://github.com/g-truc/glm.git
+	GIT_TAG 1.0.1
+)
+FetchContent_MakeAvailable(glm)
 
 set(MINIFB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(dependencies/minifb)
-target_link_libraries(minaEngine minifb)
+target_link_libraries(minaEngine 
+  minifb
+  glm::glm-header-only
+)
 
 if(WIN32)
   set_target_properties(minaEngine PROPERTIES
