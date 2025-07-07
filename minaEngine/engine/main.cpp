@@ -1,5 +1,4 @@
 #include <MiniFB.h>
-#include <vector>
 
 #include "fullscreen.hpp"
 #include "render.hpp"

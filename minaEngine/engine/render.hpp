@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <algorithm>
 #include <glm/glm.hpp>
 using namespace glm;
 
