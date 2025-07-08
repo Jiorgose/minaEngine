@@ -5,6 +5,8 @@
 
 !dependencies/
 !dependencies/**
+!assets/
+!assets/**
 
 !CMakeLists.txt
 !CMakePresets.json
