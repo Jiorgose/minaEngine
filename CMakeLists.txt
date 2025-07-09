@@ -4,9 +4,8 @@ project(minaEngine VERSION 0.1.0 LANGUAGES C CXX)
 include(FetchContent)
 
 add_executable(minaEngine WIN32 
-  minaEngine/engine/main.cpp
-  minaEngine/engine/fullscreen.cpp
-  minaEngine/engine/render.cpp
+  minaEngine/main.cpp
+  minaEngine/engine/minaEngine.cpp
 )
 set_property(TARGET minaEngine PROPERTY CXX_STANDARD 20)
 
