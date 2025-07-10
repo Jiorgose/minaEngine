@@ -1,12 +1,16 @@
 #include "minaEngine.hpp"
 
-namespace minaEngine {
-  
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
+namespace minaEngine {
+
+
+//-------------------------------------------------------------------
 //STATICS
 //-------------------------------------------------------------------
 const int numColors = 33;
-std::array<uint32_t, 33> colorPalette = {
+std::array<uint32_t, numColors> colorPalette = {
   0xFF181840, 0xFF604060, 0xFF846b63, 0xFFadb5bd,
   0xFFffffff, 0xFF8878d0, 0xFF98a8f8, 0xFF282882,
   0xFF3928ff, 0xFF4868e8, 0xFF425984, 0xFF3ca5cc,
@@ -18,29 +22,67 @@ std::array<uint32_t, 33> colorPalette = {
   0x00000000
 };
 
-static mfb_window* window = nullptr;
-static std::vector<uint32_t> buffer;
 const int width = 320;
 const int height = 240;
+const int sceneAtlasResolution = 512;
+static mfb_window* window = nullptr;
+static std::vector<uint32_t> buffer;
+static std::vector<uint8_t> currentSceneAtlas;
+
 //-------------------------------------------------------------------
 
+
+//-------------------------------------------------------------------
 //RENDER LOGIC
 //-------------------------------------------------------------------
+std::vector<uint8_t> loadAtlas(const char* fileName) {
+  std::vector<uint8_t> result;
+
+  int imageWidth, imageHeight, channels;
+  unsigned char* image = stbi_load(fileName, &imageWidth, &imageHeight, &channels, 3);
+  if (!image) {
+    stbi_image_free(image);
+    return result;
+  }
+
+  result.resize(sceneAtlasResolution * sceneAtlasResolution);
+
+  std::array<glm::u8vec3, numColors> paletteRGB;
+  for (int i = 0; i < numColors; ++i) {
+    uint32_t color = colorPalette[i];
+    paletteRGB[i] = glm::u8vec3((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+  }
+
+  for (int i = 0; i < sceneAtlasResolution * sceneAtlasResolution; ++i) {
+    glm::u8vec3 pixel(image[i * 3 + 0], image[i * 3 + 1], image[i * 3 + 2]);
+
+    uint8_t paletteIndex = numColors - 1;
+    for (uint8_t j = 0; j < numColors; ++j) {
+      if (pixel == paletteRGB[j]) {
+        paletteIndex = j;
+        break;
+      }
+    }
+
+    result[i] = paletteIndex;
+  }
+
+  stbi_image_free(image);
+  return result;
+}
+
 void render(uint32_t* buffer, int width, int height) {
-  const int stripeWidth = width / numColors;
-
   for (int x = 0; x < width; x++) {
-    int colorIndex = x / stripeWidth;
-    if (colorIndex >= numColors) colorIndex = numColors - 1;
-
     for (int y = 0; y < height; y++) {
       int i = y * width + x;
-      buffer[i] = colorPalette[colorIndex];
+      buffer[i] = colorPalette[currentSceneAtlas[y * sceneAtlasResolution + x]];
     }
   }
 }
 //-------------------------------------------------------------------
 
+
+//-------------------------------------------------------------------
 //WINDOW LOGIC
 //-------------------------------------------------------------------
 void setFullscreen(mfb_window* window, const int width, const int height) {
@@ -70,6 +112,8 @@ void setFullscreen(mfb_window* window, const int width, const int height) {
 }
 //-------------------------------------------------------------------
 
+
+//-------------------------------------------------------------------
 //HIGH LEVEL LOGIC
 //-------------------------------------------------------------------
 void init() {
@@ -77,15 +121,18 @@ void init() {
 
   window = mfb_open_ex("minaEngine", width, height, WF_FULLSCREEN);
 
+  currentSceneAtlas = loadAtlas("assets/pongAtlas.png");
+
   setFullscreen(window, width, height);
   mfb_set_target_fps(15);
 }
+
 bool shouldClose() {
   return mfb_wait_sync(window) == 0;
 }
+
 void update() {
   render(buffer.data(), width, height);
-  mfb_update_ex(window, buffer.data(), width, height);
 
   int state = mfb_update_ex(window, buffer.data(), width, height);
 

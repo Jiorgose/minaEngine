@@ -9,6 +9,9 @@ add_executable(minaEngine WIN32
 )
 set_property(TARGET minaEngine PROPERTY CXX_STANDARD 20)
 
+target_include_directories(minaEngine PRIVATE
+  ${CMAKE_SOURCE_DIR}/dependencies/stb_image
+)
 FetchContent_Declare(
 	glm
 	GIT_REPOSITORY	https://github.com/g-truc/glm.git
@@ -24,15 +27,29 @@ target_link_libraries(minaEngine
 )
 
 if(WIN32)
+  set(OUTPUT_DIR "${CMAKE_SOURCE_DIR}/bin/win")
   set_target_properties(minaEngine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/win"
   )
+
+  set(ASSETS_SOURCE_DIR "${CMAKE_SOURCE_DIR}/assets")
+  set(ASSETS_DEST_DIR "${OUTPUT_DIR}/assets")
+  add_custom_command(
+    TARGET minaEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${ASSETS_SOURCE_DIR}" "${ASSETS_DEST_DIR}"
+  )
 elseif(EMSCRIPTEN)
-  #set(CMAKE_EXECUTABLE_SUFFIX ".html")
-  set(ASYNCIFY_FLAGS "-s ASYNCIFY=1")
-  set(EXPORTED_METHODS "-s EXPORTED_RUNTIME_METHODS=['requestFullscreen']")
+  set(OUTPUT_DIR "${CMAKE_SOURCE_DIR}/bin/web")
+
   set_target_properties(minaEngine PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/web"
-    LINK_FLAGS "-o ${CMAKE_SOURCE_DIR}/bin/web/minaEngine.js ${ASYNCIFY_FLAGS} ${EXPORTED_METHODS}"
+    RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}"
+  )
+
+  target_link_options(minaEngine PRIVATE
+    "-sASYNCIFY=1"
+    "-sEXPORTED_RUNTIME_METHODS=['requestFullscreen']"
+    "--preload-file=${CMAKE_SOURCE_DIR}/assets@assets"
+    "-o${OUTPUT_DIR}/minaEngine.js"
   )
 endif()
