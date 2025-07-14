@@ -3,9 +3,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-namespace minaEngine {
-
-
 //-------------------------------------------------------------------
 //STATICS
 //-------------------------------------------------------------------
@@ -24,10 +21,12 @@ std::array<uint32_t, numColors> colorPalette = {
 
 const int width = 320;
 const int height = 240;
-const int sceneAtlasResolution = 512;
+const int atlasResolution = 512;
+const int atlasSize = atlasResolution * atlasResolution;
 static mfb_window* window = nullptr;
 static std::vector<uint32_t> buffer;
-static std::vector<uint8_t> currentSceneAtlas;
+static Scene currentScene;
+static float globalTime = 0.0f;
 
 //-------------------------------------------------------------------
 
@@ -40,12 +39,9 @@ std::vector<uint8_t> loadAtlas(const char* fileName) {
 
   int imageWidth, imageHeight, channels;
   unsigned char* image = stbi_load(fileName, &imageWidth, &imageHeight, &channels, 3);
-  if (!image) {
-    stbi_image_free(image);
-    return result;
-  }
+  if (!image) return result;
 
-  result.resize(sceneAtlasResolution * sceneAtlasResolution);
+  result.resize(atlasSize);
 
   std::array<glm::u8vec3, numColors> paletteRGB;
   for (int i = 0; i < numColors; ++i) {
@@ -53,7 +49,7 @@ std::vector<uint8_t> loadAtlas(const char* fileName) {
     paletteRGB[i] = glm::u8vec3((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
   }
 
-  for (int i = 0; i < sceneAtlasResolution * sceneAtlasResolution; ++i) {
+  for (int i = 0; i < atlasSize; ++i) {
     glm::u8vec3 pixel(image[i * 3 + 0], image[i * 3 + 1], image[i * 3 + 2]);
 
     uint8_t paletteIndex = numColors - 1;
@@ -71,11 +67,72 @@ std::vector<uint8_t> loadAtlas(const char* fileName) {
   return result;
 }
 
-void render(uint32_t* buffer, int width, int height) {
+uint32_t sampleSprite(vec2 samplePos, const object& obj) {
+  vec2 center = obj.size * 0.5f;
+  vec2 local = samplePos - center;
+
+  float cosTheta = cos(-obj.rotation);
+  float sinTheta = sin(-obj.rotation);
+
+  vec2 rotated;
+  rotated.x = local.x * cosTheta - local.y * sinTheta;
+  rotated.y = local.x * sinTheta + local.y * cosTheta;
+
+  rotated += center;
+
+  if (rotated.x < 0.0f || rotated.x >= obj.size.x || rotated.y < 0.0f || rotated.y >= obj.size.y) {
+    return 0x00000000;
+  }
+
+  vec2 spriteSize(obj.sprite.z, obj.sprite.w);
+  vec2 uv = rotated / obj.size;
+  vec2 atlasPos = vec2(obj.sprite.x, obj.sprite.y) + uv * spriteSize;
+
+  int spriteX = int(atlasPos.x);
+  int spriteY = int(atlasPos.y);
+
+  if (spriteX < 0 || spriteX >= atlasResolution || spriteY < 0 || spriteY >= atlasResolution) {
+    return 0x00000000;
+  }
+
+  int atlasIndex = spriteY * atlasResolution + spriteX;
+  uint8_t paletteIndex = currentScene.atlas[atlasIndex];
+
+  return colorPalette[paletteIndex];
+}
+
+void render(uint32_t* buffer, const int width, const int height) {
+  //render background
   for (int x = 0; x < width; x++) {
     for (int y = 0; y < height; y++) {
       int i = y * width + x;
-      buffer[i] = colorPalette[currentSceneAtlas[y * sceneAtlasResolution + x]];
+      buffer[i] = colorPalette[currentScene.atlas[y * atlasResolution + x]];
+    }
+  }
+
+  //render objects
+  for (const object& oo : currentScene.objects) {
+    float maxDim = length(oo.size);
+    int renderSize = int(ceil(maxDim));
+
+    for (int y = -renderSize / 2; y < renderSize / 2; y++) {
+      for (int x = -renderSize / 2; x < renderSize / 2; x++) {
+        vec2 samplePos = vec2(x, y) + oo.size * 0.5f;
+        uint32_t color = sampleSprite(samplePos, oo);
+
+        if (color == 0x00000000) {
+          continue;
+        }
+
+        int worldX = int(oo.position.x) + x + renderSize / 2;
+        int worldY = int(oo.position.y) + y + renderSize / 2;
+
+        if (worldX < 0 || worldX >= width || worldY < 0 || worldY >= height) {
+          continue;
+        }
+
+        buffer[worldY * width + worldX] = color;
+      }
     }
   }
 }
@@ -121,8 +178,6 @@ void init() {
 
   window = mfb_open_ex("minaEngine", width, height, WF_FULLSCREEN);
 
-  currentSceneAtlas = loadAtlas("assets/pongAtlas.png");
-
   setFullscreen(window, width, height);
   mfb_set_target_fps(15);
 }
@@ -132,6 +187,8 @@ bool shouldClose() {
 }
 
 void update() {
+  globalTime += 1.0f / 15.0f;
+
   render(buffer.data(), width, height);
 
   int state = mfb_update_ex(window, buffer.data(), width, height);
@@ -141,7 +198,20 @@ void update() {
     buffer.clear();
   }
 }
-//-------------------------------------------------------------------
 
-
+void loadScene(const char* sceneName) {
+  currentScene.atlas = loadAtlas((std::string("assets/") + sceneName + ".png").c_str());
 }
+
+object& addObject(const object& obj) {
+  currentScene.objects.push_back(obj);
+  return currentScene.objects.back();
+}
+
+void removeObject(const object& objectToRemove) {
+  auto obj = std::find(currentScene.objects.begin(), currentScene.objects.end(), objectToRemove);
+  if (obj != currentScene.objects.end()) {
+    currentScene.objects.erase(obj);
+  }
+}
+//-------------------------------------------------------------------
