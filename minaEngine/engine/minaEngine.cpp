@@ -25,8 +25,8 @@ const int atlasResolution = 512;
 const int atlasSize = atlasResolution * atlasResolution;
 static mfb_window* window = nullptr;
 static std::vector<uint32_t> buffer;
-static Scene currentScene;
-static float globalTime = 0.0f;
+static scene currentScene;
+static time engineTime;
 
 //-------------------------------------------------------------------
 
@@ -111,21 +111,21 @@ void render(uint32_t* buffer, const int width, const int height) {
   }
 
   //render objects
-  for (const object& oo : currentScene.objects) {
-    float maxDim = length(oo.size);
+  for (const object& obj : currentScene.objects) {
+    float maxDim = length(obj.size);
     int renderSize = int(ceil(maxDim));
 
-    for (int y = -renderSize / 2; y < renderSize / 2; y++) {
-      for (int x = -renderSize / 2; x < renderSize / 2; x++) {
-        vec2 samplePos = vec2(x, y) + oo.size * 0.5f;
-        uint32_t color = sampleSprite(samplePos, oo);
+    for (int y = 0; y < int(obj.size.y); y++) {
+      for (int x = 0; x < int(obj.size.x); x++) {
+        vec2 samplePos = vec2(x, y);
+        uint32_t color = sampleSprite(samplePos, obj);
 
         if (color == 0x00000000) {
           continue;
         }
-
-        int worldX = int(oo.position.x) + x + renderSize / 2;
-        int worldY = int(oo.position.y) + y + renderSize / 2;
+            
+        int worldX = int(obj.position.x) + x - int(obj.size.x / 2);
+        int worldY = int(obj.position.y) + y - int(obj.size.y / 2);
 
         if (worldX < 0 || worldX >= width || worldY < 0 || worldY >= height) {
           continue;
@@ -187,7 +187,8 @@ bool shouldClose() {
 }
 
 void update() {
-  globalTime += 1.0f / 15.0f;
+  engineTime.totalTime += 1.0f / 15.0f;
+  engineTime.deltaTime = 1.0f / 15.0f;
 
   render(buffer.data(), width, height);
 
@@ -203,15 +204,26 @@ void loadScene(const char* sceneName) {
   currentScene.atlas = loadAtlas((std::string("assets/") + sceneName + ".png").c_str());
 }
 
+void updateLayers() {
+  currentScene.objects.sort([](const object& a, const object& b) {
+    return a.layer < b.layer;
+  });
+}
+
 object& addObject(const object& obj) {
   currentScene.objects.push_back(obj);
-  return currentScene.objects.back();
+  object& returnObj = currentScene.objects.back();
+  updateLayers();
+  return returnObj;
 }
 
 void removeObject(const object& objectToRemove) {
-  auto obj = std::find(currentScene.objects.begin(), currentScene.objects.end(), objectToRemove);
-  if (obj != currentScene.objects.end()) {
-    currentScene.objects.erase(obj);
-  }
+  currentScene.objects.remove_if([&](const object& obj) {
+    return &obj == &objectToRemove;
+  });
+}
+
+time getTime() {
+  return engineTime;
 }
 //-------------------------------------------------------------------
