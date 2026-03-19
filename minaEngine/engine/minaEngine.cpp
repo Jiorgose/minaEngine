@@ -26,7 +26,7 @@ const int atlasSize = atlasResolution * atlasResolution;
 static mfb_window* window = nullptr;
 static std::vector<uint32_t> buffer;
 static scene currentScene;
-static time engineTime;
+static globalTime engineTime;
 
 //-------------------------------------------------------------------
 
@@ -179,7 +179,7 @@ void init() {
   window = mfb_open_ex("minaEngine", width, height, WF_FULLSCREEN);
 
   setFullscreen(window, width, height);
-  mfb_set_target_fps(15);
+  //mfb_set_target_fps(30);
 }
 
 bool shouldClose() {
@@ -187,8 +187,9 @@ bool shouldClose() {
 }
 
 void update() {
-  engineTime.totalTime += 1.0f / 15.0f;
-  engineTime.deltaTime = 1.0f / 15.0f;
+  engineTime.totalTime += 1.0f / 30.0f;
+  engineTime.deltaTime = 1.0f / 30.0f;
+  engineTime.updateTime = engineTime.totalTime;
 
   render(buffer.data(), width, height);
 
@@ -223,7 +224,7 @@ void removeObject(const object& objectToRemove) {
   });
 }
 
-time getTime() {
+globalTime getTime() {
   return engineTime;
 }
 //-------------------------------------------------------------------

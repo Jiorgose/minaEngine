@@ -30,9 +30,10 @@ struct scene {
   std::vector<uint8_t> atlas;
 };
 
-struct time {
+struct globalTime {
     float deltaTime = 0.0f;
     float totalTime = 0.0f;
+    float updateTime = 0.0f;
 };
 
 void init();
@@ -42,4 +43,4 @@ void loadScene(const char* sceneName);
 void updateLayers();
 object& addObject(const object& obj);
 void removeObject(const object& objectToRemove);
-time getTime();
+globalTime getTime();

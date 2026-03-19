@@ -10,9 +10,9 @@ int main() {
   object& ball = addObject(object(vec4(320, 96, 32, 32), vec2(160, 120), vec2(32), 0.0f, 1));
   
   while(!shouldClose()) {
-    time gameTime = getTime();
+    globalTime gameTime = getTime();
 
-    ball.rotation = gameTime.totalTime * 25.0f * gameTime.deltaTime;
+    ball.rotation = gameTime.totalTime * 20.0f * gameTime.deltaTime;
 
     update();
   }
